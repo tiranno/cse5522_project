@@ -72,18 +72,32 @@ def f_editor(app_window):
 
     text = ''
     last_word = ''
+    next_words = []
+    tab_position = 0
 
     while 1:
-        tab_position = 0
+        enter = 0
         user_char = app_window.getch()
 
         if user_char == curses.KEY_BACKSPACE: #Backspace
             if len(text) > 0:
                 text = text[:-1]
+            tab_position = 0
         elif user_char == 9 or user_char == curses.KEY_STAB:
-            tab_position = (tab_position + 1) % (MAX_PREDICTIONS + 1)
+            if len(next_words) > 0:
+                tab_position = (tab_position + 1) % (len(next_words) + 1)
+            else:
+                text = text + '\t'
+        elif user_char == 10 or user_char == curses.KEY_ENTER:
+            if tab_position > 0:
+                text = text + " " + next_words[tab_position - 1][0]
+                tab_position = 0
+                enter = 1
+            else:
+                text = text + '\n'
         else:
             text = text + str(chr(user_char))
+            tab_position = 0
 
         editor_window.clear()
         editor_window.addstr(3, 0, text)
@@ -94,7 +108,7 @@ def f_editor(app_window):
         if len(text) > 0 and text[-1] != ' ':
             first_word = ''
             second_word = ''
-            word_array = text.split(' ')
+            word_array = text.rstrip(' ').split(' ')
 
             try:    first_word = word_array[-2]
             except: first_word = '0'
@@ -102,6 +116,7 @@ def f_editor(app_window):
             try:    second_word = word_array[-1]
             except: second_word = '0'
             #Switch '0' to some type of return character that is not usually used?
+            #take care of special cases: newline, end of sentence, etc.
 
             next_words = f_predictions(first_word, second_word, prediction_list)
 
@@ -113,7 +128,7 @@ def f_editor(app_window):
                 choices_window.clear()
                 word_lens = [12]
                 for w in next_words:
-                    word_lens.append(len(w[1])) 
+                    word_lens.append(len(w[1]))
                 c_width = max(word_lens)
 
                 choices_window.resize(MAX_PREDICTIONS, c_width)
@@ -123,6 +138,7 @@ def f_editor(app_window):
                 choices_panel.show()
                 choices_window.refresh(); editor_window.refresh(); app_window.refresh()
             else:
+                next_words = []
                 choices_window.clear()
                 choices_panel.hide()
 
