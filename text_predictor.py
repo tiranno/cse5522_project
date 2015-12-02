@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-from time import sleep
 import os
 import curses, curses.panel
 import sys
 import csv
 from operator import itemgetter
+import argparse
 
 MAX_PREDICTIONS = 3
 
@@ -14,9 +14,41 @@ MAX_PREDICTIONS = 3
 # * Not showing cursor position / moving back up windows between typing
 ###
 
+def f_import_test_data():
+    test_data = []
+    with open('separated_test_data.csv', 'r') as f:
+        reader = csv.reader(f)
+        test_data = list(reader)
+    return test_data
+
+def f_test_predictions():
+    test_data = f_import_test_data()
+
+    prediction_list = f_import_test_data()
+
+    hit_top = 0
+    hit_top_three = 0
+    total = len(test_data)
+    for gram in test_data:
+        #Feed the first two words of gram into predictor
+        next_words = f_predictions(gram[0], gram[1], prediction_list)
+        #Check top against actual
+        if next_words[2] == gram[2]:
+            hit_top = hit_top + 1
+            hit_top_three = hit_top_three + 1
+        elif gram[2] in next_words:
+            hit_top_three = hit_top_three + 1
+
+    top_accuracy = 100*(hit_top / float(total))
+    top_three_accuracy = 100*(hit_top_three)
+
+    return top_accuracy, top_three_accuracy
+
+
+###
 
 # Read in the CPT data resultant of training, return it as an array
-def f_import_predictions():
+def f_import_test_data():
     prediction_list = []
     with open('generated_cpt.csv', 'r') as f:
         reader = csv.reader(f)
@@ -81,7 +113,7 @@ def f_app_setup(app_window):
     curses.curs_set(0)
     app_window.box()
     # app_window.keypad(1)
-    app_window.addstr(0,2," TEXT PREDICTOR  |  Help: [!!!] ")
+    app_window.addstr(0,2," TEXT PREDICTOR  |  TAB: Highlight word. ENTER: Select word if highlighted ")
 
 # Destroys the app in-terminal and exits the program
 def f_app_teardown():
@@ -97,8 +129,6 @@ def f_editor(app_window):
     curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
     curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_WHITE)
 
-    prediction_list = f_import_predictions()
-
     f_app_setup(app_window)
     editor_window, editor_panel = f_make_panel(20, 111, 1, 3)
 
@@ -106,6 +136,8 @@ def f_editor(app_window):
     choices_window, choices_panel = f_make_panel(MAX_PREDICTIONS, 1, cur_y+2, cur_x+2)
     choices_window.bkgd(' ', curses.color_pair(1))
     choices_window.refresh()
+
+    prediction_list = f_import_test_data()
 
     text = ''
     last_word = ''
@@ -171,4 +203,10 @@ def f_editor(app_window):
 
 ### MAIN ###
 if __name__ == '__main__':
-   curses.wrapper(f_editor)
+    # tup = f_test_predictions()
+    # print(tup)
+
+    # parser = argparse.ArgumentParser(description='A basic text editor with word prediction capabilities.')
+    # parser.add_argument('--test', dest='accumulate', action='store_const', const=sum, default=max, help='sum the integers (default: find the max)')
+
+    curses.wrapper(f_editor)

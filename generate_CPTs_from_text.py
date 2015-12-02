@@ -1,5 +1,71 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 import csv
+import re
+import nltk
+import sys
+from nltk.tokenize.punkt import PunktSentenceTokenizer, PunktParameters
+
+def f_import_raw_input(filenames):
+
+    sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
+    passages = []
+    for  filename in filenames:
+        raw_text = ''
+        with open(filename, 'r') as f:
+            raw_text = f.read()
+            f.close()
+
+        raw_text = raw_text.replace('?"', '? "').replace('!"', '! "').replace('."', '. "').replace("\n", ' ')
+        passages.append(sent_detector.tokenize(raw_text, realign_boundaries=True))
+
+    return passages
+
+def f_parse_raw_input(filename):
+    passages = f_import_raw_input(filename)
+
+
+    ngrams = []
+    for sentences in passages:
+        for sentence in sentences:
+            tokens = nltk.word_tokenize(sentence)
+            if tokens[-1] == ".":
+                del tokens[-1]
+
+            # print(tokens)
+            win_index = 2
+            while len(tokens) > 2 and win_index < len(tokens):
+                one = tokens[win_index-2].rstrip("\'").lstrip("\'")
+                two = tokens[win_index-1].rstrip("\'").lstrip("\'")
+                three = tokens[win_index].rstrip("\'").lstrip("\'")
+                if one in "?.,();:" or one == "--" or one == "``" or one == "\'\'" or one =="\'":
+                    win_index = win_index + 1
+                elif two in "?.,();:\'" or two == "--" or two == "``" or two == "\'\'" or two =="\'":
+                    win_index = win_index + 1
+                elif three in "?.,();:\'" or three == "--" or three == "``" or three == "\'\'" or three =="\'":
+                    win_index = win_index + 1
+                else:
+                    gram = [one, two, three]
+                    ngrams.append(gram)
+                    win_index = win_index + 1
+
+
+    counting_dict = {}
+    for gram in ngrams:
+        gram_string = gram[0]+','+gram[1]+','+gram[2]
+        if gram_string in counting_dict:
+            counting_dict[gram_string] = counting_dict[gram_string] + 1
+        else:
+            counting_dict[gram_string] = 1
+
+    gram_count = []
+    for gram, value in counting_dict.items():
+        gram_count.append([value]+gram.split(','))
+
+    # print(gram_count)
+    probability_grams = f_calc_two_window(gram_count)
+    print(probability_grams)
+    # print(counting_dict)
+
 
 def f_write_to_csv(grams):
     with open('generated_cpt.csv', 'w') as csvfile:
@@ -20,6 +86,7 @@ def f_parse_common_three_grams():
     probability_grams = f_calc_two_window(three_grams)
     f_write_to_csv(probability_grams)
 
+#Put this in the editor if we want to have live updating from the user input
 def f_calc_two_window(grams):
     new_grams = [] #[frequency given window, first word, second word, third word]
 
@@ -45,40 +112,14 @@ def f_calc_two_window(grams):
     return new_grams
 
 
-f_parse_common_three_grams()
+if __name__ == '__main__':
+    # f_parse_common_three_grams()
 
+    reload(sys)
+    sys.setdefaultencoding('utf8')
 
-
-# for post in root.iter('Post'):
-#     window = ['0', '0']
-#     if post.attrib['class'] != 'System':
-#         for t in post.iter('t'):
-#             word = t.attrib['word']
-#             if t.attrib['pos'] == '.':
-#                 word = '.'
-#             if t.attrib['pos'] == 'NNP':
-#                 word = 'NNP'
-#             strWindow = ':'.join(window)
-#             instance = {'window': strWindow, 'word': word, 'count': 1}
-#             seenInstance = False
-#             seenWindow = False
-#             for x in wordCounts:
-#                 if x['window']==strWindow:
-#                     if x['word'] == word:
-#                         x['count'] = x['count'] + 1
-#                         seenInstance = True
-#                     seenWindow = True
-#                     for windowInstance in windowCounts:
-#                         if windowInstance['window'] == strWindow:
-#                             windowInstance['count'] = windowInstance['count'] + 1
-#             if not seenInstance:
-#                 wordCounts.append(instance)
-#             if not seenWindow:
-#                 windowCounts.append({'window':strWindow, 'count': 1})
-#             window[0] = window[1]
-#             window[1] = word
-#
-# for windowCount in windowCounts:
-#     for wordCount in wordCounts:
-#         if windowCount['window'] == wordCount['window']:
-#             wordCount['count'] = float(wordCount['count'])/float(windowCount['count'])
+    raw_text_files = ['sherlock_1.txt','sherlock_2.txt',#'sherlock_3.txt',
+        'sherlock_4.txt','sherlock_5.txt','sherlock_6.txt','sherlock_7.txt',
+        'sherlock_8.txt','sherlock_9.txt','sherlock_10.txt','sherlock_11.txt',
+        'sherlock_12.txt']
+    f_parse_raw_input(raw_text_files)
